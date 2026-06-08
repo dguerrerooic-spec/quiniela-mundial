@@ -71,7 +71,7 @@ export default function AdminPage() {
     fetchData()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleSaveResult = async (matchId: string) => {
+ const handleSaveResult = async (matchId: string) => {
     setSaving(matchId)
     const score = scores[matchId]
     if (score?.home === '' || score?.away === '') {
@@ -89,6 +89,12 @@ export default function AdminPage() {
       .eq('id', matchId)
 
     if (!error) {
+      // Calcular puntos automáticamente
+      const match = matches.find(m => m.id === matchId)
+      if (match) {
+        await supabase.rpc('calculate_match_points', { p_match_id: match.match_number })
+      }
+
       setMatches(prev => prev.map(m =>
         m.id === matchId
           ? { ...m, home_score: parseInt(score.home), away_score: parseInt(score.away), status: 'finished' }
