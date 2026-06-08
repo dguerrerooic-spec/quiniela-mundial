@@ -6,15 +6,15 @@ import { useRouter } from 'next/navigation'
 
 type Match = {
   id: string
-  match_date: string
+  match_number: number
   group_name: string
   status: string
   home_score: number | null
   away_score: number | null
-  home_team?: { name: string }
-  away_team?: { name: string }
   home_team_id: number
   away_team_id: number
+  home_team?: { name: string }
+  away_team?: { name: string }
 }
 
 export default function AdminPage() {
@@ -40,8 +40,8 @@ export default function AdminPage() {
 
       const { data: matchesData } = await supabase
         .from('matches')
-        .select('id, match_date, group_name, status, home_score, away_score, home_team_id, away_team_id')
-        .order('match_date')
+        .select('id, match_number, group_name, status, home_score, away_score, home_team_id, away_team_id')
+        .order('match_number')
 
       const { data: teamsData } = await supabase
         .from('teams')
@@ -106,29 +106,31 @@ export default function AdminPage() {
   }, {} as Record<string, Match[]>)
 
   if (loading) return (
-    <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-      <p className="text-white">Cargando...</p>
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <p className="text-gray-500">Cargando...</p>
     </div>
   )
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white p-6">
+    <div className="min-h-screen bg-slate-50 p-6">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-2xl font-bold mb-2">Panel Admin</h1>
+        <h1 className="text-2xl font-bold text-gray-800 mb-2">Panel Admin</h1>
         <p className="text-gray-400 text-sm mb-8">Ingresá resultados de partidos</p>
 
         {Object.entries(groupedMatches).map(([group, groupMatches]) => (
           <div key={group} className="mb-8">
-            <h2 className="text-orange-500 font-semibold text-sm uppercase tracking-wider mb-3">
-              {group}
+            <h2 className="text-orange-600 font-bold text-sm uppercase tracking-wider mb-3">
+              Grupo {group}
             </h2>
-            <div className="space-y-3">
+            <div className="space-y-2">
               {groupMatches.map(match => (
-                <div key={match.id} className={`rounded-xl p-4 flex items-center gap-4 ${
-                  match.status === 'finished' ? 'bg-gray-800' : 'bg-gray-900'
+                <div key={match.id} className={`rounded-xl px-4 py-3 border flex items-center gap-4 ${
+                  match.status === 'finished'
+                    ? 'bg-green-50 border-green-200'
+                    : 'bg-white border-gray-100 shadow-sm'
                 }`}>
                   <div className="flex-1 text-right">
-                    <p className="font-semibold">{match.home_team?.name}</p>
+                    <span className="font-semibold text-gray-800 text-sm">{match.home_team?.name}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <input
@@ -140,9 +142,9 @@ export default function AdminPage() {
                         ...prev,
                         [match.id]: { ...prev[match.id], home: e.target.value }
                       }))}
-                      className="w-12 h-10 bg-gray-700 text-white text-center rounded-lg outline-none focus:ring-2 focus:ring-orange-500"
+                      className="w-12 h-9 bg-gray-100 text-gray-800 text-center rounded-lg outline-none focus:ring-2 focus:ring-orange-400 text-lg font-bold border border-gray-200"
                     />
-                    <span className="text-gray-500 font-bold">—</span>
+                    <span className="text-gray-400 font-bold">:</span>
                     <input
                       type="number"
                       min="0"
@@ -152,24 +154,24 @@ export default function AdminPage() {
                         ...prev,
                         [match.id]: { ...prev[match.id], away: e.target.value }
                       }))}
-                      className="w-12 h-10 bg-gray-700 text-white text-center rounded-lg outline-none focus:ring-2 focus:ring-orange-500"
+                      className="w-12 h-9 bg-gray-100 text-gray-800 text-center rounded-lg outline-none focus:ring-2 focus:ring-orange-400 text-lg font-bold border border-gray-200"
                     />
                   </div>
                   <div className="flex-1">
-                    <p className="font-semibold">{match.away_team?.name}</p>
+                    <span className="font-semibold text-gray-800 text-sm">{match.away_team?.name}</span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className={`text-xs px-2 py-1 rounded-full ${
+                    <span className={`text-xs px-2 py-1 rounded-full font-medium ${
                       match.status === 'finished'
-                        ? 'bg-green-900 text-green-300'
-                        : 'bg-gray-700 text-gray-400'
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-gray-100 text-gray-500'
                     }`}>
                       {match.status === 'finished' ? 'Finalizado' : 'Pendiente'}
                     </span>
                     <button
                       onClick={() => handleSaveResult(match.id)}
                       disabled={saving === match.id}
-                      className="text-xs px-3 py-2 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white rounded-lg transition-colors"
+                      className="text-xs px-3 py-2 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white rounded-lg transition-colors font-medium"
                     >
                       {saving === match.id ? '...' : 'Guardar'}
                     </button>

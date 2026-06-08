@@ -5,13 +5,11 @@ import { createClient } from '@/app/lib/supabase'
 
 type Match = {
   id: string
-  match_date: string
   group_name: string
   home_team_id: number
   away_team_id: number
-  home_score: number | null
-  away_score: number | null
   status: string
+  score_multiplier: number
   home_team?: { name: string; flag_emoji: string }
   away_team?: { name: string; flag_emoji: string }
 }
@@ -37,9 +35,9 @@ export default function PredictionsPage() {
 
       const { data: matchesData } = await supabase
         .from('matches')
-        .select('id, match_date, group_name, status, home_score, away_score, home_team_id, away_team_id')
+        .select('id, group_name, status, home_team_id, away_team_id, score_multiplier')
         .eq('status', 'upcoming')
-        .order('match_date')
+        .order('match_number')
 
       const { data: teamsData } = await supabase
         .from('teams')
@@ -121,61 +119,85 @@ export default function PredictionsPage() {
     </div>
   )
 
+  const totalSaved = saved.size
+  const totalMatches = matches.length
+  const getFlagEmoji = (code: string) => {
+  if (!code) return '🏳️'
+  const codePoints = code
+    .toUpperCase()
+    .split('')
+    .map(char => 127397 + char.charCodeAt(0))
+  return String.fromCodePoint(...codePoints)
+}
+
   return (
     <div className="min-h-screen bg-gray-950 text-white p-6">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-2xl font-bold mb-2">Mis Pronósticos</h1>
+        <div className="flex items-center justify-between mb-2">
+          <h1 className="text-2xl font-bold">Mis Pronósticos</h1>
+          <span className="text-orange-500 font-semibold">{totalSaved}/{totalMatches}</span>
+        </div>
         <p className="text-gray-400 text-sm mb-8">
-          Marcador exacto = 3 pts · Resultado correcto = 1 pt
+          Marcador exacto = 3 pts · Resultado correcto = 1 pt · Semis ×2 · Final ×3
         </p>
 
         {Object.entries(groupedMatches).map(([group, groupMatches]) => (
           <div key={group} className="mb-8">
-            <h2 className="text-orange-500 font-semibold text-sm uppercase tracking-wider mb-3">
-              {group}
+            <h2 className="text-orange-500 font-semibold text-sm uppercase tracking-wider mb-3 flex items-center gap-2">
+              <span>Grupo {group}</span>
+              <span className="text-gray-600">·</span>
+              <span className="text-gray-500 normal-case">
+                {groupMatches.filter(m => saved.has(m.id)).length}/{groupMatches.length} pronosticados
+              </span>
             </h2>
             <div className="space-y-3">
               {groupMatches.map(match => {
                 const pred = predictions[match.id]
                 const hasPred = saved.has(match.id)
                 return (
-                  <div key={match.id} className="bg-gray-900 rounded-xl p-4 flex items-center gap-4">
-                    <div className="flex-1 text-right">
-                      <p className="font-semibold">{match.home_team?.name}</p>
+                  <div key={match.id} className={`rounded-xl p-4 transition-all ${
+                    hasPred ? 'bg-gray-900 border border-green-900/40' : 'bg-gray-900'
+                  }`}>
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 flex items-center justify-end gap-2">
+                        <span className="font-semibold text-sm">{match.home_team?.name}</span>
+                        
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          min="0"
+                          max="20"
+                          value={pred?.home_score_pred ?? ''}
+                          onChange={(e) => updatePrediction(match.id, 'home_score_pred', e.target.value)}
+                          className="w-12 h-10 bg-gray-800 text-white text-center rounded-lg outline-none focus:ring-2 focus:ring-orange-500 text-lg font-bold"
+                        />
+                        <span className="text-gray-500 font-bold">:</span>
+                        <input
+                          type="number"
+                          min="0"
+                          max="20"
+                          value={pred?.away_score_pred ?? ''}
+                          onChange={(e) => updatePrediction(match.id, 'away_score_pred', e.target.value)}
+                          className="w-12 h-10 bg-gray-800 text-white text-center rounded-lg outline-none focus:ring-2 focus:ring-orange-500 text-lg font-bold"
+                        />
+                      </div>
+                      <div className="flex-1 flex items-center gap-2">
+                       
+                        <span className="font-semibold text-sm">{match.away_team?.name}</span>
+                      </div>
+                      <button
+                        onClick={() => handleSave(match.id)}
+                        disabled={saving === match.id}
+                        className={`text-xs px-4 py-2 rounded-lg transition-colors font-medium ${
+                          hasPred
+                            ? 'bg-green-900 hover:bg-green-800 text-green-300'
+                            : 'bg-orange-500 hover:bg-orange-600 text-white'
+                        }`}
+                      >
+                        {saving === match.id ? '...' : hasPred ? '✓' : 'Guardar'}
+                      </button>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="number"
-                        min="0"
-                        max="20"
-                        value={pred?.home_score_pred ?? ''}
-                        onChange={(e) => updatePrediction(match.id, 'home_score_pred', e.target.value)}
-                        className="w-12 h-10 bg-gray-800 text-white text-center rounded-lg outline-none focus:ring-2 focus:ring-orange-500"
-                      />
-                      <span className="text-gray-500 font-bold">—</span>
-                      <input
-                        type="number"
-                        min="0"
-                        max="20"
-                        value={pred?.away_score_pred ?? ''}
-                        onChange={(e) => updatePrediction(match.id, 'away_score_pred', e.target.value)}
-                        className="w-12 h-10 bg-gray-800 text-white text-center rounded-lg outline-none focus:ring-2 focus:ring-orange-500"
-                      />
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-semibold">{match.away_team?.name}</p>
-                    </div>
-                    <button
-                      onClick={() => handleSave(match.id)}
-                      disabled={saving === match.id}
-                      className={`text-xs px-3 py-2 rounded-lg transition-colors ${
-                        hasPred
-                          ? 'bg-green-800 hover:bg-green-700 text-green-200'
-                          : 'bg-orange-500 hover:bg-orange-600 text-white'
-                      }`}
-                    >
-                      {saving === match.id ? '...' : hasPred ? '✓ Guardado' : 'Guardar'}
-                    </button>
                   </div>
                 )
               })}
