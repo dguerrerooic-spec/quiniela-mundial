@@ -77,7 +77,8 @@ export default function PredictionsPage() {
     if (!user) { setSaving(null); return }
 
     const pred = predictions[matchId]
-    if (pred?.home_score_pred === undefined || pred?.away_score_pred === undefined) {
+    if (pred?.home_score_pred === undefined || pred?.away_score_pred === undefined ||
+    isNaN(pred.home_score_pred) || isNaN(pred.away_score_pred)) {
       setSaving(null)
       return
     }
@@ -101,9 +102,15 @@ export default function PredictionsPage() {
       [matchId]: {
         ...prev[matchId],
         match_id: matchId,
-        [field]: parseInt(value) || 0
+        [field]: value === '' ? undefined : parseInt(value)
       }
     }))
+    // Al editar, marcar como no guardado para permitir re-guardar
+    setSaved(prev => {
+      const next = new Set(prev)
+      next.delete(matchId)
+      return next
+    })
   }
 
   const groupedMatches = matches.reduce((acc, match) => {
@@ -114,28 +121,22 @@ export default function PredictionsPage() {
   }, {} as Record<string, Match[]>)
 
   if (loading) return (
-    <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-      <p className="text-white">Cargando partidos...</p>
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <p className="text-gray-500">Cargando partidos...</p>
     </div>
   )
 
   const totalSaved = saved.size
   const totalMatches = matches.length
-  const getFlagEmoji = (code: string) => {
-  if (!code) return '🏳️'
-  const codePoints = code
-    .toUpperCase()
-    .split('')
-    .map(char => 127397 + char.charCodeAt(0))
-  return String.fromCodePoint(...codePoints)
-}
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white p-6">
+    <div className="min-h-screen bg-slate-50 p-6">
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center justify-between mb-2">
-          <h1 className="text-2xl font-bold">Mis Pronósticos</h1>
-          <span className="text-orange-500 font-semibold">{totalSaved}/{totalMatches}</span>
+          <h1 className="text-2xl font-bold text-gray-800">Mis Pronósticos</h1>
+          <span className="bg-orange-100 text-orange-600 font-semibold px-3 py-1 rounded-full text-sm">
+            {totalSaved}/{totalMatches}
+          </span>
         </div>
         <p className="text-gray-400 text-sm mb-8">
           Marcador exacto = 3 pts · Resultado correcto = 1 pt · Semis ×2 · Final ×3
@@ -143,25 +144,27 @@ export default function PredictionsPage() {
 
         {Object.entries(groupedMatches).map(([group, groupMatches]) => (
           <div key={group} className="mb-8">
-            <h2 className="text-orange-500 font-semibold text-sm uppercase tracking-wider mb-3 flex items-center gap-2">
-              <span>Grupo {group}</span>
-              <span className="text-gray-600">·</span>
-              <span className="text-gray-500 normal-case">
+            <div className="flex items-center gap-3 mb-3">
+              <h2 className="text-orange-600 font-bold text-sm uppercase tracking-wider">
+                Grupo {group}
+              </h2>
+              <span className="text-gray-400 text-xs">
                 {groupMatches.filter(m => saved.has(m.id)).length}/{groupMatches.length} pronosticados
               </span>
-            </h2>
-            <div className="space-y-3">
+            </div>
+            <div className="space-y-2">
               {groupMatches.map(match => {
                 const pred = predictions[match.id]
                 const hasPred = saved.has(match.id)
                 return (
-                  <div key={match.id} className={`rounded-xl p-4 transition-all ${
-                    hasPred ? 'bg-gray-900 border border-green-900/40' : 'bg-gray-900'
+                  <div key={match.id} className={`rounded-xl px-4 py-3 border transition-all ${
+                    hasPred
+                      ? 'bg-green-50 border-green-200'
+                      : 'bg-white border-gray-100 shadow-sm'
                   }`}>
                     <div className="flex items-center gap-3">
-                      <div className="flex-1 flex items-center justify-end gap-2">
-                        <span className="font-semibold text-sm">{match.home_team?.name}</span>
-                        
+                      <div className="flex-1 text-right">
+                        <span className="font-semibold text-gray-800 text-sm">{match.home_team?.name}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <input
@@ -170,32 +173,31 @@ export default function PredictionsPage() {
                           max="20"
                           value={pred?.home_score_pred ?? ''}
                           onChange={(e) => updatePrediction(match.id, 'home_score_pred', e.target.value)}
-                          className="w-12 h-10 bg-gray-800 text-white text-center rounded-lg outline-none focus:ring-2 focus:ring-orange-500 text-lg font-bold"
+                          className="w-12 h-9 bg-gray-100 text-gray-800 text-center rounded-lg outline-none focus:ring-2 focus:ring-orange-400 text-lg font-bold border border-gray-200"
                         />
-                        <span className="text-gray-500 font-bold">:</span>
+                        <span className="text-gray-400 font-bold">:</span>
                         <input
                           type="number"
                           min="0"
                           max="20"
                           value={pred?.away_score_pred ?? ''}
                           onChange={(e) => updatePrediction(match.id, 'away_score_pred', e.target.value)}
-                          className="w-12 h-10 bg-gray-800 text-white text-center rounded-lg outline-none focus:ring-2 focus:ring-orange-500 text-lg font-bold"
+                          className="w-12 h-9 bg-gray-100 text-gray-800 text-center rounded-lg outline-none focus:ring-2 focus:ring-orange-400 text-lg font-bold border border-gray-200"
                         />
                       </div>
-                      <div className="flex-1 flex items-center gap-2">
-                       
-                        <span className="font-semibold text-sm">{match.away_team?.name}</span>
+                      <div className="flex-1">
+                        <span className="font-semibold text-gray-800 text-sm">{match.away_team?.name}</span>
                       </div>
                       <button
                         onClick={() => handleSave(match.id)}
                         disabled={saving === match.id}
-                        className={`text-xs px-4 py-2 rounded-lg transition-colors font-medium ${
+                        className={`text-xs px-3 py-2 rounded-lg transition-colors font-medium min-w-[80px] ${
                           hasPred
-                            ? 'bg-green-900 hover:bg-green-800 text-green-300'
+                            ? 'bg-green-100 hover:bg-green-200 text-green-700'
                             : 'bg-orange-500 hover:bg-orange-600 text-white'
                         }`}
                       >
-                        {saving === match.id ? '...' : hasPred ? '✓' : 'Guardar'}
+                        {saving === match.id ? '...' : hasPred ? '✓ Guardado' : 'Guardar'}
                       </button>
                     </div>
                   </div>
