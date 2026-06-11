@@ -36,7 +36,7 @@ export default function PredictionsPage() {
       const { data: matchesData } = await supabase
         .from('matches')
         .select('id, group_name, status, home_team_id, away_team_id, score_multiplier')
-        .eq('status', 'upcoming')
+        .in('status', ['upcoming', 'live', 'finished'])
         .order('match_number')
 
       const { data: teamsData } = await supabase
@@ -168,13 +168,14 @@ export default function PredictionsPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         <input
-                          type="number"
-                          min="0"
-                          max="20"
-                          value={pred?.home_score_pred ?? ''}
-                          onChange={(e) => updatePrediction(match.id, 'home_score_pred', e.target.value)}
-                          className="w-12 h-9 bg-gray-100 text-gray-800 text-center rounded-lg outline-none focus:ring-2 focus:ring-orange-400 text-lg font-bold border border-gray-200"
-                        />
+  type="number"
+  min="0"
+  max="20"
+  value={pred?.home_score_pred ?? ''}
+  onChange={(e) => updatePrediction(match.id, 'home_score_pred', e.target.value)}
+  disabled={match.status !== 'upcoming'}
+  className="w-12 h-9 bg-gray-100 text-gray-800 text-center rounded-lg outline-none focus:ring-2 focus:ring-orange-400 text-lg font-bold border border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+/>
                         <span className="text-gray-400 font-bold">:</span>
                         <input
                           type="number"
@@ -189,16 +190,18 @@ export default function PredictionsPage() {
                         <span className="font-semibold text-gray-800 text-sm">{match.away_team?.name}</span>
                       </div>
                       <button
-                        onClick={() => handleSave(match.id)}
-                        disabled={saving === match.id}
-                        className={`text-xs px-3 py-2 rounded-lg transition-colors font-medium min-w-[80px] ${
-                          hasPred
-                            ? 'bg-green-100 hover:bg-green-200 text-green-700'
-                            : 'bg-orange-500 hover:bg-orange-600 text-white'
-                        }`}
-                      >
-                        {saving === match.id ? '...' : hasPred ? '✓ Guardado' : 'Guardar'}
-                      </button>
+  onClick={() => handleSave(match.id)}
+  disabled={saving === match.id || match.status !== 'upcoming'}
+  className={`text-xs px-3 py-2 rounded-lg transition-colors font-medium min-w-[80px] disabled:cursor-not-allowed ${
+    hasPred
+      ? 'bg-green-100 hover:bg-green-200 text-green-700'
+      : match.status !== 'upcoming'
+      ? 'bg-gray-100 text-gray-400'
+      : 'bg-orange-500 hover:bg-orange-600 text-white'
+  }`}
+>
+  {saving === match.id ? '...' : hasPred ? '✓ Guardado' : match.status !== 'upcoming' ? 'Cerrado' : 'Guardar'}
+</button>
                     </div>
                   </div>
                 )
